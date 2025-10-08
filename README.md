@@ -2,12 +2,12 @@
 
 ## Описание
 
-**dt-articles** — это микросервис для работы со статьями в проекте **Dev Talk**. Он предоставляет RESTful API для создания, обновления, удаления и получения статей. Сервис разработан на базе FastAPI и использует MySQL в качестве базы данных. Взаимодействие с другими микросервисами происходит через Kafka.
+**devtalk-articles-service** — это микросервис для работы со статьями в проекте **Dev Talk**. Он предоставляет RESTful API для создания, обновления, удаления и получения статей. Сервис разработан на базе FastAPI и использует MySQL в качестве базы данных. Взаимодействие с другими микросервисами происходит через Kafka.
 
 ## Файловая структура микросервиса
 
 ```
-dev-talk-articles/
+devtalk-articles-service/
 |
 ├── app/
 │   ├── __init__.py
@@ -18,13 +18,13 @@ dev-talk-articles/
 │   │   │   ├── exceptions.py
 │   │   │   ├── articles/
 │   │   │   │   ├── __init__.py
-│   │   │   │   ├── views.py
+│   │   │   │   ├── endpoints.py
 │   │   │   │   ├── repositories.py
 │   │   │   │   ├── services.py
 │   │   │   │   └── schemas.py
 │   │   │   └── tags/
 │   │   │       ├── __init__.py
-│   │   │       ├── views.py
+│   │   │       ├── endpoints.py
 │   │   │       ├── repositories.py
 │   │   │       ├── services.py
 │   │   │       └── schemas.py

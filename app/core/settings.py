@@ -5,7 +5,11 @@ from pydantic import ConfigDict
 class Settings(BaseSettings):
     """Конфигурационный класс приложения."""
 
-    # Логирование
+    # Application Configuration
+    APP_VERSION: str = "1.0.0"
+    ENVIRONMENT: str = "production"
+
+    # Logging Configuration
     LOG_FILE_PATH: str = "logs/app.log"
     LOG_LEVEL: str = "INFO"
     LOG_ROTATION: str = "100 MB"

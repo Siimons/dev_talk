@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   mysql:
     image: mysql:8.0
-    container_name: dev_talk_database
+    container_name: ${PROJECT_NAME}_${SERVICE_NAME}_mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
@@ -16,30 +14,73 @@ services:
       - ./migrations/models.sql:/docker-entrypoint-initdb.d/models.sql
     networks:
       - app_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: ${PROJECT_NAME}_${SERVICE_NAME}_redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app_network
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      timeout: 10s
+      retries: 5
 
   app:
     build:
       context: .
-    container_name: dt-articles
+      dockerfile: Dockerfile
+    image: dev-talk/articles-service:${APP_VERSION:-latest}
+    container_name: ${PROJECT_NAME}_${SERVICE_NAME}_app
     environment:
-      MYSQL_HOST: dev_talk_database
+      # MySQL settings
+      MYSQL_HOST: ${PROJECT_NAME}_${SERVICE_NAME}_mysql
       MYSQL_PORT: 3306
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
+
+      # Redis settings
+      REDIS_HOST: ${PROJECT_NAME}_${SERVICE_NAME}_redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+      # Application settings
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+
+      PYTHONPATH: /app
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - app_network
     ports:
       - "8000:8000"
     command: >
-      sh -c "/wait-for-it.sh dev_talk_database:3306 -- uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+      sh -c "/wait-for-it.sh ${PROJECT_NAME}_${SERVICE_NAME}_mysql:3306 -t 30 -- 
+      /wait-for-it.sh ${PROJECT_NAME}_${SERVICE_NAME}_redis:6379 -t 30 -- 
+      uvicorn main:app --host 0.0.0.0 --port 8000"
 
 volumes:
   mysql_data:
+    name: ${PROJECT_NAME}_${SERVICE_NAME}_mysql_data
+    driver: local
+
+  redis_data:
+    name: ${PROJECT_NAME}_${SERVICE_NAME}_redis_data
     driver: local
 
 networks:
   app_network:
+    name: ${PROJECT_NAME}_${SERVICE_NAME}_app_network
     driver: bridge

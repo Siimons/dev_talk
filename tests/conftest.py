@@ -3,8 +3,8 @@ import pytest_asyncio
 from fastapi import FastAPI, status
 from httpx import AsyncClient, ASGITransport
 
-from app.api.v1.articles.views import articles_router
-from app.api.v1.tags.views import tags_router
+from app.api.v1.articles.endpoints import articles_router
+from app.api.v1.tags.endpoints import tags_router
 from app.core.dependencies.common import db, cache, lifespan
 
 

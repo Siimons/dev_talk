@@ -1,35 +1,53 @@
-# Указываем базовый образ Python на основе slim-версии Ubuntu
-FROM python:3.12-slim
+# -------- Stage 1: Build dependencies --------
+FROM python:3.12-slim AS builder
 
-# Устанавливаем системные зависимости
+# Install system packages required for building Python packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    mariadb-client \
     gcc \
+    g++ \
     libffi-dev \
-    build-essential \
     libssl-dev \
     default-libmysqlclient-dev \
-    wget \
+    build-essential \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Копируем wait-for-it.sh для проверки доступности MySQL
+# Set working directory
+WORKDIR /app
+
+# Copy and install Python dependencies into a separate directory
+COPY requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+
+# -------- Stage 2: Final minimal image --------
+FROM python:3.12-slim
+
+# Install only runtime system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    default-mysql-client \
+    wget \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Download service readiness utility
 ADD https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh /wait-for-it.sh
 RUN chmod +x /wait-for-it.sh
 
-# Устанавливаем рабочую директорию
+# Set working directory
 WORKDIR /app
 
-# Копируем файл зависимостей
-COPY requirements.txt .
+# Copy installed dependencies from the builder stage
+COPY --from=builder /root/.local /root/.local
 
-# Устанавливаем Python-зависимости
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Копируем оставшиеся файлы приложения
+# Copy application source code
 COPY . .
 
-# Открываем порт для приложения
+# Set environment variables for proper Python execution
+ENV PATH=/root/.local/bin:$PATH
+ENV PYTHONPATH=/app
+
+# Expose the port used by the application
 EXPOSE 8000
 
-# Запускаем приложение FastAPI через Uvicorn, проверяя доступность MySQL
-CMD ["/wait-for-it.sh", "mysql:3306", "--", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Define the container entrypoint
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
